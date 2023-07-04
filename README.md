@@ -2,7 +2,12 @@
 
 ## Overview
 This project aims to extract text from medical records using OCR (Optical Character Recognition) and get crucial information from each given document using Bio_ClinicalBERT to provide the required output.
-
+## Structure
+- health_pipeline.py: this file has the mainstream where the extracted text is used to perform the Q&A task running the model.
+- pdf_to_img.py: this file is run once only currently to convert the given pdf to image because Tesseract takes images only.
+- text_extractor.py: this file uses Tesseract to extract the text from all the images extracted from the pdf. The resulting text is concatenated and returned when the extract_text_from_images function is called.
+- output.json: is the file that has the final result in a JSON format.
+- output_py2pdf.txt and text_output.py have the output text from Py2PDF and tesseract.
 ## Requirements
 - Python 3.8 or above
 - Tesseract OCR
