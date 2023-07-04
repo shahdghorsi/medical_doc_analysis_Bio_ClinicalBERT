@@ -1,6 +1,5 @@
 from transformers import AutoTokenizer, AutoModelForQuestionAnswering, pipeline
-import PyPDF2
-
+import json
 import text_extractor
 
 model_name = "emilyalsentzer/Bio_ClinicalBERT"
@@ -10,72 +9,57 @@ nlp = pipeline("question-answering", model=model, tokenizer=tokenizer)
 
 pdf_file_path = "medical-record.pdf"
 
-chief_complaint_question = "What is the patient's chief complaint?"
-treatment_plan_question = "What is the suggested treatment plan?"
-allergies_question = "What are the patient's allergies?"
-medications_question = "What medications is the patient taking?"
+''' This is the first set of questions I used for the task, I tried reforming agşn cause these questions did not give good results
+questions = [
+    "What is the patient's chief complaint?",
+    "What is the suggested treatment plan?",
+    "What are the patient's allergies?",
+    "What medications is the patient taking?",
+    "Does the patient have a family history of hypertension?",
+    "Does the patient have a family history of colon cancer?",
+    "Has the patient experienced minimal bright red blood per rectum?"
+]'''
+questions = ["What is the reason for the patient's visit or main health concern?",
+"What treatment has been recommended or prescribed by the doctor?",
+"Are there any known allergies that the patient has?",
+"What medications is the patient currently using, and are there any associated side effects?",
+"Is there a history of hypertension in the patient's family?",
+"Is there a family history of colon cancer?",
+"Has the patient reported any instances of minimal bright red blood per rectum?"]
 
-def extract_information(context, question):
-    """
-    Extracts information from a given context by answering a question using the pre-trained model.
-    
-    Args:
-        context (str): The text context in which to search for the answer.
-        question (str): The question to be answered.
-    
-    Returns:
-        answer (str): The extracted answer to the question.
-        confidence (float): The confidence score of the extracted answer.
-    """
-    result = nlp(question=question, context=context)
-    return result['answer'], result['score']
+images_path = 'images'
+context = text_extractor.extract_text_from_images(images_path)
+#print("CONTEXT" + context)
+answers = []
 
-def answer_question(question, context):
-    """
-    Answers a specific question using the pre-trained model.
+for question in questions:
     
-    Args:
-        question (str): The question to be answered.
-        context (str): The text context in which to search for the answer.
-    
-    Returns:
-        answer (str): The extracted answer to the question.
-        confidence (float): The confidence score of the extracted answer.
-    """
     result = nlp(question=question, context=context)
+    print("RESULT" , result)
     answer = result['answer']
     confidence = result['score']
-    return answer, confidence
+    answer_dict = {
+        "question": question,
+        "answer": answer,
+        "confidence": confidence
+    }
+    print(answer_dict)
+    answers.append(answer_dict)
 
-# Call the text_extractor.extract_text_from_images() function to get the text context from images
-image_folder = 'images'
-context = text_extractor.extract_text_from_images(image_folder)
+# Determine treatment plan appropriateness
+yes_count = sum(answer["answer"].lower() == "yes" for answer in answers[-3:])
+no_count = 3 - yes_count
+treatment_plan_appropriate = "Yes" if yes_count > no_count else "No"
 
-# Uncomment the following line if using the extract_text_from_pdf() function to get the text context from a PDF file
-# context = extract_text_from_pdf(pdf_file_path)
+# Construct the JSON object with the retrieved information
+output = {
+    "answers": answers,
+    "treatment_plan_appropriate": treatment_plan_appropriate
+}
 
-# Extract information for various questions
-chief_complaint, chief_complaint_confidence = extract_information(context, chief_complaint_question)
-treatment_plan, treatment_plan_confidence = extract_information(context, treatment_plan_question)
-allergies, allergies_confidence = extract_information(context, allergies_question)
-medications, medications_confidence = extract_information(context, medications_question)
+# Save the JSON output to a file
+output_file = "output.json"
+with open(output_file, 'w') as f:
+    json.dump(output, f)
 
-hypertension_question = "Does the patient have a family history of hypertension?"
-colon_cancer_question = "Does the patient have a family history of colon cancer?"
-bright_red_blood_question = "Has the patient experienced minimal bright red blood per rectum?"
-
-# Answer additional questions using the answer_question() function
-hypertension_answer, hypertension_confidence = answer_question(hypertension_question, context)
-colon_cancer_answer, colon_cancer_confidence = answer_question(colon_cancer_question, context)
-bright_red_blood_answer, bright_red_blood_confidence = answer_question(bright_red_blood_question, context)
-
-# Print the extracted information and confidence scores
-print("Chief Complaint:", chief_complaint)
-print("Chief Complaint Confidence:", chief_complaint_confidence)
-print("Treatment Plan:", treatment_plan)
-print("Treatment Plan Confidence:", treatment_plan_confidence)
-print("Allergies:", allergies)
-print("Allergies Confidence:", allergies_confidence)
-print("Medications:", medications)
-print("Medications Confidence:", medications_confidence)
-print("Hypertension Answer:", hypertension
+print("Output saved to", output_file)
